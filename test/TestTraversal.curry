@@ -1,7 +1,7 @@
 --- Some tests for the Data.Traversal library.
 ---
 --- To run all tests automatically by the currycheck tool, use the command:
---- "curry check TestTraversal"
+--- `curry-check TestTraversal`
 --- 
 --- @author Sebastian Fischer
 --- @version February 2008

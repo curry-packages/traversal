@@ -5,7 +5,7 @@
 --- for a description of the library.
 ---
 --- @author Sebastian Fischer
---- @version January 2019
+--- @version December 2020
 ---------------------------------------------------------------------------
 
 module Data.Traversal (
@@ -18,13 +18,13 @@ module Data.Traversal (
 
   evalFamily, evalChildFamilies, fold, foldChildren,
 
-  replaceChildrenIO, mapChildrenIO, mapFamilyIO, mapChildFamiliesIO,
+  replaceChildrenM, mapChildrenM, mapFamilyM, mapChildFamiliesM,
 
-  evalFamilyIO, evalChildFamiliesIO
+  evalFamilyM, evalChildFamiliesM
 
   ) where
 
---- A datatype is <code>Traversable</code> if it defines a function
+--- A datatype is `Traversable` if it defines a function
 --- that can decompose a value into a list of children of the same type
 --- and recombine new children to a new value of the original type. 
 ---
@@ -76,7 +76,7 @@ mapChildFamilies tra trb = mapChildren tra . mapFamily trb
 
 --- Applies the given function to each member of the family of a value 
 --- as long as possible. On each member of the family of the result the given
---- function will yield <code>Nothing</code>.
+--- function will yield `Nothing`.
 --- Proceeds bottom-up.
 ---
 evalFamily :: Traversable a a -> (a -> Maybe a) -> a -> a
@@ -102,38 +102,38 @@ foldChildren :: Traversable a b -> Traversable b b
              -> (a -> [rb] -> ra) -> (b -> [rb] -> rb) -> a -> ra
 foldChildren tra trb f g a = f a (map (fold trb g) (children tra a))
 
---- IO version of replaceChildren
+--- Monadic version of replaceChildren
 ---
-replaceChildrenIO :: Traversable a b -> a -> IO [b] -> IO a
-replaceChildrenIO tr = liftIO . replaceChildren tr
+replaceChildrenM :: Monad m => Traversable a b -> a -> m [b] -> m a
+replaceChildrenM tr = fmap . replaceChildren tr
 
---- IO version of mapChildren
+--- Monadic version of mapChildren
 ---
-mapChildrenIO :: Traversable a b -> (b -> IO b) -> a -> IO a
-mapChildrenIO tr f a = replaceChildrenIO tr a (mapIO f (children tr a))
+mapChildrenM :: Monad m => Traversable a b -> (b -> m b) -> a -> m a
+mapChildrenM tr f a = replaceChildrenM tr a (mapM f (children tr a))
 
---- IO version of mapFamily
+--- Monadic version of mapFamily
 ---
-mapFamilyIO :: Traversable a a -> (a -> IO a) -> a -> IO a
-mapFamilyIO tr f a = mapChildFamiliesIO tr tr f a >>= f
+mapFamilyM :: Monad m => Traversable a a -> (a -> m a) -> a -> m a
+mapFamilyM tr f a = mapChildFamiliesM tr tr f a >>= f
 
---- IO version of mapChildFamilies
+--- Monadic version of mapChildFamilies
 ---
-mapChildFamiliesIO :: Traversable a b -> Traversable b b
-                    -> (b -> IO b) -> a -> IO a
-mapChildFamiliesIO tra trb = mapChildrenIO tra . mapFamilyIO trb
+mapChildFamiliesM :: Monad m => Traversable a b -> Traversable b b
+                  -> (b -> m b) -> a -> m a
+mapChildFamiliesM tra trb = mapChildrenM tra . mapFamilyM trb
 
---- IO version of evalFamily
+--- Monadic version of evalFamily
 ---
-evalFamilyIO :: Traversable a a -> (a -> IO (Maybe a)) -> a -> IO a
-evalFamilyIO tr f = mapFamilyIO tr g
- where g a = f a >>= maybe (return a) (mapFamilyIO tr g)
+evalFamilyM :: Monad m => Traversable a a -> (a -> m (Maybe a)) -> a -> m a
+evalFamilyM tr f = mapFamilyM tr g
+ where g a = f a >>= maybe (return a) (mapFamilyM tr g)
 
---- IO version of evalChildFamilies
+--- Monadic version of evalChildFamilies
 ---
-evalChildFamiliesIO :: Traversable a b -> Traversable b b
-                    -> (b -> IO (Maybe b)) -> a -> IO a
-evalChildFamiliesIO tra trb = mapChildrenIO tra . evalFamilyIO trb
+evalChildFamiliesM :: Monad m => Traversable a b -> Traversable b b
+                  -> (b -> m (Maybe b)) -> a -> m a
+evalChildFamiliesM tra trb = mapChildrenM tra . evalFamilyM trb
 
 
 -- implementation of 'family' with functional lists for efficiency reasons
@@ -149,7 +149,4 @@ familyFL tr x xs = x : childFamiliesFL tr tr x xs
 
 childFamiliesFL :: Traversable a b -> Traversable b b -> a -> FunList b
 childFamiliesFL tra trb x xs = concatFL (map (familyFL trb) (children tra x)) xs
-
-liftIO :: (a -> b) -> IO a -> IO b
-liftIO f ioa = ioa >>= return . f
 
