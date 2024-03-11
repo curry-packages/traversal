@@ -15,7 +15,7 @@
         "modules": [ "TestTraversal" ]
     },
     "source": {
-      "git": "https://git.ps.informatik.uni-kiel.de/curry-packages/traversal.git",
+      "git": "https://github.com/curry-packages/traversal.git",
       "tag": "$version"
     }
 }
